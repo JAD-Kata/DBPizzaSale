@@ -1,0 +1,140 @@
+name: Autograding Tests
+
+on:
+  - push
+  - workflow_dispatch
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+jobs:
+  jad-autograding:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+
+    services:
+      mysql:
+        image: mysql:latest
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_DATABASE: ventepizza
+          MYSQL_ROOT_PASSWORD: root
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4.5.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install MySQL client
+        run: sudo apt-get install -y mysql-client
+
+      - name: Setup Database
+        run: mysql --defaults-file=./sql/mysql.conf -N < ./sql/script/ventepizza-data.sql
+
+      - name: Add students's dump
+        run: mysql --defaults-file=./sql/mysql.conf -N < ./sql/script/ventepizza-dump.sql
+
+      - name: Create utility stored procedures
+        run: mysql --defaults-file=./sql/mysql.conf -N < ./sql/test/util-test.sql
+
+      - name: Generate All classes
+        run: mvn -q compile
+
+      - name: Test dv01_sale view
+        id: test-sql-script1
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test SQL Script
+          command: mysql --defaults-file=./sql/mysql.conf -N < ./sql/test/dv01-sale-test.sql
+          timeout: 2
+          max-score: 1
+
+      - name: Test dv01_saleline view
+        id: test-sql-script2
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test SQL Script
+          command: mysql --defaults-file=./sql/mysql.conf -N < ./sql/test/dv01-saleline-test.sql
+          timeout: 2
+          max-score: 2
+
+      - name: Test getAllSales stored procedure
+        id: test-sp-getallsales
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test getAllSales stored procedure
+          setup-command: ''
+          command: mvn -B -q -fae test -Dtest=GetAllSalesTest#doAllTests --file pom.xml -DfailIfNoTests=false
+          timeout: 1
+          max-score: 3
+
+      - name: Test getSaleById stored procedure
+        id: test-sp-getsalebyid
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test getSaleById stored procedure
+          setup-command: ''
+          command: mvn -B -q -fae test -Dtest=GetSaleByIdTest#doAllTests --file pom.xml -DfailIfNoTests=false
+          timeout: 1
+          max-score: 3
+
+      - name: Test getAllSaleLines stored procedure
+        id: test-sp-getallsalelines
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test getAllSaleLines stored procedure
+          setup-command: ''
+          command: mvn -B -q -fae test -Dtest=GetAllSaleLinesTest#doAllTests --file pom.xml -DfailIfNoTests=false
+          timeout: 1
+          max-score: 3
+
+      - name: Test getSaleLineById stored procedure
+        id: test-sp-getsalelinebyid
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test getSaleLineById stored procedure
+          setup-command: ''
+          command: mvn -B -q -fae test -Dtest=GetSaleLineByIdTest#doAllTests --file pom.xml -DfailIfNoTests=false
+          timeout: 1
+          max-score: 3
+
+      - name: Test createSale stored procedure
+        id: test-sp-createsale
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: Test createSale stored procedure
+          setup-command: ''
+          command: mvn -B -q -fae test -Dtest=CreateSaleTest#doAllTests --file pom.xml -DfailIfNoTests=false
+          timeout: 1
+          max-score: 5
+
+      - name: Clean Database
+        run: mysql --defaults-file=./sql/mysql.conf -N < ./sql/test/clean.sql
+
+      - name: Autograding Reporter
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          TEST-SQL-SCRIPT1_RESULTS: "${{steps.test-sql-script1.outputs.result}}"
+          TEST-SQL-SCRIPT2_RESULTS: "${{steps.test-sql-script2.outputs.result}}"
+          TEST-SP-GETALLSALES_RESULTS: "${{steps.test-sp-getallsales.outputs.result}}"
+          TEST-SP-GETSALEBYID_RESULTS: "${{steps.test-sp-getsalebyid.outputs.result}}"
+          TEST-SP-GETALLSALELINES_RESULTS: "${{steps.test-sp-getallsalelines.outputs.result}}"
+          TEST-SP-GETSALELINEBYID_RESULTS: "${{steps.test-sp-getsalelinebyid.outputs.result}}"
+          TEST-SP-CREATESALE_RESULTS: "${{steps.test-sp-createsale.outputs.result}}"
+
+        with:
+          runners: test-sql-script1,test-sql-script2,test-sp-getallsales,test-sp-getsalebyid,test-sp-getallsalelines,test-sp-getsalelinebyid,test-sp-createsale
