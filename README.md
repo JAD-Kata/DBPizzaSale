@@ -35,7 +35,7 @@ charge. Il vous suffit d'exécuter la commande suivante :
 python start.py
 ```
 
-## Objectif :
+## Objectifs :
 
 ### Vues à créer :
 
@@ -67,8 +67,9 @@ Voici les 2 vues que vous devez créer :
 - `getSaleLineById(id)` : retourne une ligne de vente par son
   id (`id`, `product`, `size`, `quantity`, `unitPrice`, `options`)
 - `createSale(orderNumber varchar(10), onSite varchar(1))` : crée une vente à la date du jour
-- `addSaleLine(orderNumber varchar(10), product varchar(50), size varchar(10), quantity int, option1 varchar(50), option2 varchar(50), option3 varchar(50), option4 varchar(50))` :
-  ajoute une ligne de vente à une vente
+-
+`addSaleLine(orderNumber varchar(10), product varchar(50), size varchar(10), quantity int, option1 varchar(50), option2 varchar(50), option3 varchar(50), option4 varchar(50))` :
+ajoute une ligne de vente à une vente
 
 ## Validation
 
